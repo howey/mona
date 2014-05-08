@@ -234,7 +234,8 @@ void differenceKernel(unsigned char * test_data, unsigned char * goal_data, int 
     int my_max_fitness_s = 0;
 
     if(i < HEIGHT*WIDTH) {
-	    int thispixel = ty*WIDTH*4 + tx*4;
+	    int thispixel = 4 * i;
+	    //int thispixel = tx*WIDTH*4 + ty*4;
 
 	    unsigned char test_a = test_data[thispixel];
 	    unsigned char test_r = test_data[thispixel + 1];
@@ -271,16 +272,16 @@ int difference(cairo_surface_t * test_surf, cairo_surface_t * goal_surf)
     dim3 gridDim(ceil((float)WIDTH/(float)BLOCK_SIZE), ceil((float)HEIGHT/(float)BLOCK_SIZE), 1);
 
     //TODO: Make these pointers global and only malloc once during the entire program
-    cudaMalloc((void **)&test_data_d, sizeof(unsigned char)*WIDTH*HEIGHT);
-    cudaMalloc((void **)&goal_data_d, sizeof(unsigned char)*WIDTH*HEIGHT);
+    cudaMalloc((void **)&test_data_d, sizeof(unsigned char)*4*WIDTH*HEIGHT);
+    cudaMalloc((void **)&goal_data_d, sizeof(unsigned char)*4*WIDTH*HEIGHT);
     cudaMalloc((void **)&difference_d, sizeof(int)*WIDTH*HEIGHT);
     cudaMalloc((void **)&my_max_fitness_d, sizeof(int)*WIDTH*HEIGHT);
     difference = (int *)malloc(sizeof(int)*WIDTH*HEIGHT);
     my_max_fitness = (int *)malloc(sizeof(int)*WIDTH*HEIGHT);
 
     //This will really slow things down. PCI-E bus will be a bottleneck.
-    cudaMemcpy(test_data_d, test_data, sizeof(unsigned char)*WIDTH*HEIGHT, cudaMemcpyHostToDevice);
-    cudaMemcpy(goal_data_d, goal_data, sizeof(unsigned char)*WIDTH*HEIGHT, cudaMemcpyHostToDevice);
+    cudaMemcpy(test_data_d, test_data, sizeof(unsigned char)*4*WIDTH*HEIGHT, cudaMemcpyHostToDevice);
+    cudaMemcpy(goal_data_d, goal_data, sizeof(unsigned char)*4*WIDTH*HEIGHT, cudaMemcpyHostToDevice);
 
     //Launch the kernel to compute the difference
     differenceKernel<<<gridDim, blockDim>>>(test_data_d, goal_data_d, difference_d, my_max_fitness_d);
