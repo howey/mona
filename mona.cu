@@ -224,10 +224,11 @@ int MAX_FITNESS = -1;
 
 unsigned char * goal_data = NULL;
 
-void differenceKernel(unsigned char * test_data, unsigned char * goal_data, int * difference, int * my_max_fitness) {
+void differenceKernel(unsigned char * test_data, unsigned char * goal_data, int * difference, int * my_max_fitness)
+{
     int tx = threadIdx.x + blockIdx.x * blockDim.x;
     int ty = threadIdx.y + blockIdx.y * blockDim.y;
-    int i = tx * HEIGHT + ty;
+    int i = tx * WIDTH + ty;
 
     int difference_s = 0;
     int my_max_fitness_s = 0;
@@ -245,8 +246,7 @@ void differenceKernel(unsigned char * test_data, unsigned char * goal_data, int 
 	    unsigned char goal_g = goal_data[thispixel + 2];
 	    unsigned char goal_b = goal_data[thispixel + 3];
 
-	    if(MAX_FITNESS == -1)
-		my_max_fitness_s += goal_a + goal_r + goal_g + goal_b;
+	    my_max_fitness_s += goal_a + goal_r + goal_g + goal_b;
 
 	    difference_s += (ABS(test_a - goal_a) + ABS(test_r - goal_r) + ABS(test_g - goal_g) + ABS(test_b - goal_b));
     }
