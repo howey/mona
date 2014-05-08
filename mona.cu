@@ -30,7 +30,7 @@
                               (val) > (max) ? (max) : (val))
 
 //The CUDA block size
-#define BLOCK_SIZE 16
+#define BLOCK_SIZE 16 
 
 int WIDTH;
 int HEIGHT;
@@ -223,6 +223,7 @@ int mutate(void)
 int MAX_FITNESS = -1;
 
 unsigned char * goal_data = NULL;
+unsigned char * goal_data_d;
 
 __global__ void differenceKernel(unsigned char * test_data, unsigned char * goal_data, int * difference, int * my_max_fitness, int width, int height)
 {
@@ -242,7 +243,7 @@ __global__ void differenceKernel(unsigned char * test_data, unsigned char * goal
 	    unsigned char test_g = test_data[thispixel + 2];
 	    unsigned char test_b = test_data[thispixel + 3];
 
-	    unsigned char goal_a = goal_data[thispixel];
+            unsigned char goal_a = goal_data[thispixel];
 	    unsigned char goal_r = goal_data[thispixel + 1];
 	    unsigned char goal_g = goal_data[thispixel + 2];
 	    unsigned char goal_b = goal_data[thispixel + 3];
@@ -259,11 +260,12 @@ __global__ void differenceKernel(unsigned char * test_data, unsigned char * goal
 int difference(cairo_surface_t * test_surf, cairo_surface_t * goal_surf)
 {
     unsigned char * test_data = cairo_image_surface_get_data(test_surf);
-    if(!goal_data)
+    if(!goal_data) {
         goal_data = cairo_image_surface_get_data(goal_surf);
+    	cudaMemcpy(goal_data_d, goal_data, sizeof(unsigned char)*4*WIDTH*HEIGHT, cudaMemcpyHostToDevice);
+    }
 
     unsigned char * test_data_d;
-    unsigned char * goal_data_d;
     int * difference;
     int * my_max_fitness;
     int * difference_d;
@@ -273,7 +275,6 @@ int difference(cairo_surface_t * test_surf, cairo_surface_t * goal_surf)
 
     //TODO: Make these pointers global and only malloc once during the entire program
     cudaMalloc((void **)&test_data_d, sizeof(unsigned char)*4*WIDTH*HEIGHT);
-    cudaMalloc((void **)&goal_data_d, sizeof(unsigned char)*4*WIDTH*HEIGHT);
     cudaMalloc((void **)&difference_d, sizeof(int)*WIDTH*HEIGHT);
     cudaMalloc((void **)&my_max_fitness_d, sizeof(int)*WIDTH*HEIGHT);
     difference = (int *)malloc(sizeof(int)*WIDTH*HEIGHT);
@@ -281,7 +282,6 @@ int difference(cairo_surface_t * test_surf, cairo_surface_t * goal_surf)
 
     //This will really slow things down. PCI-E bus will be a bottleneck.
     cudaMemcpy(test_data_d, test_data, sizeof(unsigned char)*4*WIDTH*HEIGHT, cudaMemcpyHostToDevice);
-    cudaMemcpy(goal_data_d, goal_data, sizeof(unsigned char)*4*WIDTH*HEIGHT, cudaMemcpyHostToDevice);
 
     //Launch the kernel to compute the difference
     differenceKernel<<<gridDim, blockDim>>>(test_data_d, goal_data_d, difference_d, my_max_fitness_d, WIDTH, HEIGHT);
@@ -334,7 +334,6 @@ int difference(cairo_surface_t * test_surf, cairo_surface_t * goal_surf)
         MAX_FITNESS = my_max_fitness_total;
 
     cudaFree(test_data_d);
-    cudaFree(goal_data_d);
     cudaFree(difference_d);
     cudaFree(my_max_fitness_d);
     free(difference);
@@ -448,6 +447,8 @@ static void mainloop(cairo_surface_t * pngsurf)
 }
 
 int main(int argc, char ** argv) {
+
+
     cairo_surface_t * pngsurf;
     if(argc == 1)
         pngsurf = cairo_image_surface_create_from_png("mona.png");
@@ -457,8 +458,12 @@ int main(int argc, char ** argv) {
     WIDTH = cairo_image_surface_get_width(pngsurf);
     HEIGHT = cairo_image_surface_get_height(pngsurf);
 
+    cudaMalloc((void **)&goal_data_d, sizeof(unsigned char)*4*WIDTH*HEIGHT);
+
     srandom(getpid() + time(NULL));
     x_init();
     mainloop(pngsurf);
+    
+    cudaFree(goal_data_d);
 }
 
