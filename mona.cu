@@ -224,16 +224,16 @@ int MAX_FITNESS = -1;
 
 unsigned char * goal_data = NULL;
 
-void differenceKernel(unsigned char * test_data, unsigned char * goal_data, int * difference, int * my_max_fitness)
+__global__ void differenceKernel(unsigned char * test_data, unsigned char * goal_data, int * difference, int * my_max_fitness, int width, int height)
 {
     int tx = threadIdx.x + blockIdx.x * blockDim.x;
     int ty = threadIdx.y + blockIdx.y * blockDim.y;
-    int i = tx * WIDTH + ty;
+    int i = tx * width + ty;
 
     int difference_s = 0;
     int my_max_fitness_s = 0;
 
-    if(i < HEIGHT*WIDTH) {
+    if(i < height*width) {
 	    int thispixel = 4 * i;
 	    //int thispixel = tx*WIDTH*4 + ty*4;
 
@@ -284,7 +284,7 @@ int difference(cairo_surface_t * test_surf, cairo_surface_t * goal_surf)
     cudaMemcpy(goal_data_d, goal_data, sizeof(unsigned char)*4*WIDTH*HEIGHT, cudaMemcpyHostToDevice);
 
     //Launch the kernel to compute the difference
-    differenceKernel<<<gridDim, blockDim>>>(test_data_d, goal_data_d, difference_d, my_max_fitness_d);
+    differenceKernel<<<gridDim, blockDim>>>(test_data_d, goal_data_d, difference_d, my_max_fitness_d, WIDTH, HEIGHT);
 
     //Copy results from the device, another PCI-E bottleneck
     cudaMemcpy(difference, difference_d, sizeof(int)*WIDTH*HEIGHT, cudaMemcpyDeviceToHost);
